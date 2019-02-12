@@ -66,6 +66,7 @@ typedef NS_ENUM(NSInteger, UIUserInterfaceSizeClass) {
 -(CUINamedImage *)imageWithName:(NSString *)n scaleFactor:(CGFloat)s;
 -(CUINamedImage *)imageWithName:(NSString *)n scaleFactor:(CGFloat)s deviceIdiom:(int)idiom;
 -(NSArray *)imagesWithName:(NSString *)n;
+-(void)setStorageRef:(NSObject *)o;
 
 @end
 
@@ -130,18 +131,14 @@ NSString *sizeClassSuffixForSizeClass(UIUserInterfaceSizeClass sizeClass)
 	}
 }
 
-NSMutableArray *getImagesArray(CUICatalog *catalog, NSString *key)
+NSArray<CUINamedImage *> *getImagesArray(CUICatalog *catalog, NSString *key)
 {
-    NSMutableArray *images = [[NSMutableArray alloc] initWithCapacity:5];
+    NSArray<CUINamedImage *> *images = [catalog imagesWithName:key];
+    NSIndexSet *indices = [images indexesOfObjectsPassingTest:^BOOL(CUINamedImage * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        return [obj isKindOfClass: CUINamedImage.class];
+    }];
 
-    for (NSNumber *scaleFactor in @[@1, @2, @3])
-    {
-        CUINamedImage *image = [catalog imageWithName:key scaleFactor:scaleFactor.doubleValue];
-
-        if (image && image.scale == scaleFactor.floatValue) [images addObject:image];
-    }
-
-    return images;
+    return [images objectsAtIndexes:indices];
 }
 
 void exportCarFileAtPath(NSString * carPath, NSString *outputDirectoryPath)
@@ -155,7 +152,7 @@ void exportCarFileAtPath(NSString * carPath, NSString *outputDirectoryPath)
 	CUICatalog *catalog = [[CUICatalog alloc] init];
 	
 	/* Override CUICatalog to point to a file rather than a bundle */
-	[catalog setValue:facet forKey:@"_storageRef"];
+	[catalog setStorageRef:facet];
 	
 	/* CUICommonAssetStorage won't link */
 	CUICommonAssetStorage *storage = [[NSClassFromString(@"CUICommonAssetStorage") alloc] initWithPath:carPath];
@@ -182,7 +179,7 @@ void exportCarFileAtPath(NSString * carPath, NSString *outputDirectoryPath)
                                                             error:&error];
         }
         
-		NSMutableArray *images = getImagesArray(catalog, key);
+		NSArray *images = getImagesArray(catalog, key);
 		for( CUINamedImage *image in images )
 		{
 			if( CGSizeEqualToSize(image.size, CGSizeZero) )
